@@ -1,12 +1,13 @@
 // #include "arduino_secrets.h"
 #include "cyclicBuffer.h"
 
-#define L 128
-#define Fs 44100
+#define L 512
+#define FS 44100
+#define ALPHA 0.2  // smoothing factor
 
 typedef struct cyclicBuffer<unsigned int> AudioBuffer;
 
-unsigned int meanVal;
+unsigned int smoothedVal;
 unsigned int i, j;
 unsigned int samplingPeriod;
 unsigned long microSeconds;
@@ -17,9 +18,10 @@ AudioBuffer *bufPtrA, *bufPtrB;
 void setup() {
   bufPtrA = &bufA;
   bufPtrB = &bufB;
-  meanVal = 0;
 
-  samplingPeriod = round(1000000 * (1.0 / Fs));  //Period in microseconds
+  bufPtrA->push(0);
+
+  samplingPeriod = round(1000000 * (1.0 / FS));  //Period in microseconds
   microSeconds = micros();
 
   Serial.begin(115200);
@@ -33,18 +35,14 @@ void swap(AudioBuffer *&pA, AudioBuffer *&pB) {
 
 void loop() {
   microSeconds = micros();
-  bufPtrA->push(analogRead(A0));
+
+  smoothedVal = (float)analogRead(A0) * ALPHA + (float)*(bufPtrA->last()) * (1.0 - ALPHA);
+  bufPtrA->push(smoothedVal);
+
+  Serial.println(smoothedVal);
 
   if (bufPtrA->is_full()) {
     swap(bufPtrA, bufPtrB);
-  }
-
-  if (bufPtrB->is_full()) {
-    meanVal = 0;
-    for (i = 0; i < L; ++i) {
-      meanVal += *(bufPtrB->pop());
-    }
-    Serial.println((int)(meanVal / L));
   }
 
   /*remaining wait time between samples if necessary*/

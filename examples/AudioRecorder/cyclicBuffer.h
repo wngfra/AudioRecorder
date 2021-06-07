@@ -34,6 +34,10 @@ struct cyclicBuffer
     return &buf[tmp];
   }
 
+  T* last() const {
+    return &buf[currentPos];
+  }
+
   void reset() {
     count = 0;
     currentPos = bufSize - 1;
